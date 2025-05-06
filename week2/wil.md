@@ -84,5 +84,18 @@ index-organized table에서는 key로 정렬되어 저장되므로, 범위 스�
 
 
 ## Buffering, Immutability, and Ordering
+Storage Engine은 어떤 자료구조에 기반한다.<br>
+그러나 이 구조들은 캐싱의 의미나 복구 등 Storage Engine 위에서 돌아가는 것들을 고려하지 않는다.<br>
 
-## Summary
+### Buffering
+디스크에 값을 저장하기 전에 메모리에 모아두는 것을 buffering이라고 한다.<br>
+가득찬 블록 단위로 저장하고 읽는 것이 효율적이기 때문에 buffering을 한다.<br>
+
+### Immutability
+파일을 읽어서 수정하는 경우 같은 위치에 다시 쓰는가에 대한 논의이다.<br>
+Immutable한 경우에는 파일 끝에 변경사항을 append하는 방식을 사용한다.<br>
+
+### Ordering
+레코드들이 키로 정렬된 순서로 저장되는가에 대한 논의이다.<br>
+정렬된 키들이 물리적으로 비슷한 위치에 저장된다면 ordering이 있다고 한다.<br>
+Ordering이 있으면 단일 레코드 조회 뿐만 아니라 range scan도 효율적으로 가능하다.<br>
