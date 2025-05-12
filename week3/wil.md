@@ -6,7 +6,18 @@
 ### On-Disk Structures
 디스크에 접근하는 시간 외에도 디스크에 한계가 있다면, 그것은 디스크 작동의 가장 작은 단위가 block이라는 점이다.<br>
 특정 지점의 data를 읽기 위해서는 data가 있는 block을 통째로 읽어야한다.<br>
-..
+
+이 block을 가져올 때 pointer라는 것을 이용하는데, on-disk에서 pointer는 offset등을 계산하여 활용한다.<br>
+찾고자 하는 block까지의 pointer chain이 길어질 수 있기 때문에 대체로 offset은 미리 계산해두거나 메모리에 캐싱하두는데,
+이런 점을 고려했을 때 chain이 길어지지 않게 하기 위해서 fanout을 키우고 height를 줄이는 것이 좋다.<br>
+
+#### 그렇다면 한 페이지에 여러 node를 저장한다면?
+locality 측면에서 이점이 있다.<br>
+다음 노드를 찾기 위해서는 이미 읽어온 page 내에서 pointer를 따라가면 되므로 disk I/O를 줄일 수 있다.<br>
+
+하지만 tree balancing 과정에서 pointer 변경을 유발하는 page reorganization이 필요할 수 있다.<br>
+
+
 ## Ubiquitous B-Trees
 도서관에서 책을 찾아가는 과정처럼 B-Tree도 계층적이다.<br>
 B-Tree는 balanced search tree와 유사하지만,
