@@ -39,7 +39,66 @@ Node들은 3가지로 나뉘는데,
    - root와 leaf를 연결
 
 Occupancy란 node의 capacity와 실제로 들고 있는 key의 수 간의 관계를 말한다.<br>
+B-Tree는 각 노드에 저장되는 key의 수를 의미하는 Fanout이라는 특징이 있다.<br>
+높을수록 분할과 병합의 횟수를 줄일 수 있다. -> 구조 변경의 비용을 줄일 수 있다.<br>
+분할과 병합같은 구조 변경을 Balancing Operation이라고 하는데 이런 작업들은 주로 node가 
+가득 차거나 비어있을 때 발생한다.<br>
+
+#### B+ Tree
+지금까지 설명한 내용들은 B-Tree 계열의 모든 트리들이 가지는 공통적인 특징이다.<br>
+B-Tree와 B+ Tree의 차이는 leaf node에서 발생한다.<br>
+B+ Tree는 leaf node만이 value를 가진다.<br>
+Internal node들은 탐색을 위한 separator key만을 가진다.<br>
+
+value를 leaf node만 가지다보니 삽입, 수정, 삭제, 조회와 같은 모든 operation은 leaf node에서만 발생하고,<br>
+병합이나 분할이 발생할 때만 상위 node에 영향을 미친다.<br>
 
 ### Separator Keys
+B-Tree의 node에 정렬되어 있는 key들은 index entries, separator keys, divider cells라고 불린다.<br>
+이 key들은 lower level의 subtree들을 분할하고 범위를 정의한다.<br>
+이분 탐색을 하기 위해 항상 Key들은 정렬되어 있어야 한다.<br>
+
+K1, K2, K3가 있다고 가정했을 때, 범위는 4개로 나뉘고 아래와 같다.<br>
+1. x < K1
+2. K1 <= x < K2
+3. K2 <= x < K3
+4. K3 <= x
+
+원칙은 key의 왼쪽에는 key보다 작은 값이 있어야 한다는 것이다.<br>
+
+#### Sibling Node Pointer
+일부 B-Tree 변형에서는 sibling node pointer를 사용한다.<br>
+주로 leaf node에서 범위 query를 효율적으로 수행하기 위해서 사용한다.<br>
+
+예를 들어, K2-1 ~ K2+1을 찾는 범위 query를 해야하고 sibling node pointer가 없다면, 
+k2-1을 찾은 후에 parent node를 통해 형제 노드로 가서 K2+1을 찾아야 한다.<br>
+이를 leaf node간의 pointer를 통해 연결해주면,
+K2-1을 찾은 후에 sibling node pointer를 통해 K2+1을 바로 찾을 수 있다.<br>
+
+#### Bottome to Top
+B-Tree는 Bottom to Top으로 확장된다.<br>
+우선 leaf node에 데이터를 삽입하고,
+leaf node가 가득 차 있을 때 분할 과정에서 separator key가 추가되면서 parent node에 영향을 미친다.<br>
+이런 방식으로 B-Tree의 구조적 변화는 Bottom to Top으로 전파된다.<br>
+
 ### B-Tree Lookup Complexity
+B-Tree에서 탐색의 복잡도는 아래 두 가지 관점에서 바라볼 수 있다.
+1. block transfer의 수 (disk I/O 관점)
+  - logK M개의 page만 읽으면 key를 찾을 수 있다.
+  - 트리의 height만큼의 child pointer를 따라가면 검색을 할 수 있다.
+2. comparison의 수 (비교 연산 관점)
+  - 각 노드 내에서 key를 찾는 것은 binary search를 이용하므로 log2 M개의 비교 연산이 필요하다.
+
+logK M * log2 M개의 비교 연산이 필요하고,
+이는 log M으로 단순화할 수 있다.<br>
+
 ### B-Tree Lookup Algorithm
+B-Tree에서 탐색을 하려면 root에서 시작해서 leaf까지 한 번의 traversal을 해야한다.<br>
+탐색의 목적은 두 가지로 나뉘는데,
+1. key를 찾는 것 
+  - key를 찾는 경우는 point query나 update, deletion 같은 연산을 할 때
+2. key의 predecessor를 찾는 것
+  - key의 predecessor를 찾는 경우는 range query를 하거나 insertion을 할 때
+
+root에서 시작해서 찾으려는 값보다 큰 첫번째 key를 찾고 그 subtree로 내려간다.<br>
+이런 과정을 반복하다보면 leaf node에 도달하게 된다.<br>
