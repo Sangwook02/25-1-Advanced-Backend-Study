@@ -1,6 +1,27 @@
 # Chapter 2. B-Tree Basics
-## B-Tree Basics
+
 ## Binary Search Trees
+BST는 정렬된 in-memory data structure이다.<br>
+node를 대표하는 key가 있고 각 key는 value를 갖는다.<br>
+
+하나의 root node로 부터 시작되고,
+node의 key는 자신의 왼쪽에 있는 어떤 key보다 크다.<br>
+
+### Tree Balancing
+insertion을 하다보면 tree가 skewed해질 수 있다.<br>
+이렇게 skewed해지면 tree의 height가 커지고, 탐색 속도가 느려진다.<br>
+
+이를 방지하기 위해 balancing이 필요하다.<br>
+balancing을 해주면 tree의 height는 log2 N으로 줄어든다.<br>
+
+Balancing은 tree height를 줄이고 node들이 한 쪽으로 너무 치우치지 않도록 하는 방향으로 진행된다.<br>
+
+### Trees for Disk-Based Storages
+근데 BST는 fanout이 2로 고정이다보니 balancing이 자주 필요하다.<br>
+만약, BST로 DB를 구현했다면 locality와 tree height의 측면에서 문제가 발생했을 것이다.<br>
+
+=> 이런 문제를 해결하기 위해 B-Tree를 사용하는 것이다.
+
 ## Disk-Based Structures
 
 ### On-Disk Structures
