@@ -42,5 +42,42 @@ fanout이 높고 height가 낮은 구조로 설계하여 balancing을 줄이고,
 삽입과 삭제 시에는 split과 merge를 통해 노드의 개수를 조절한다.<br>
 
 # Chapter 3. File Formats
+메모리 접근 시에는 가상 메모리를 사용하므로 offset을 계산할 필요가 없지만,<br>
+디스크에 접근할 때는 system call을 사용하므로 target file의 어디에 있는지 offset을 계산해야 한다.<br>
+
+따라서 구축하고 수정하고 해석하기 쉬운 디스크 파일 포맷을 설계해야 한다.<br>
+이 챕터에서는 B-Tree 뿐만 아니라 온디스크 데이터 구조를 설계하는 방법을 본다.
+
 ## Motivation
-## Binary Encoding
+file format을 만드는 것은 C와 같은 프로그래밍 언어에서 malloc과 free를 사용하는 것과 비슷하다.<br>
+이때 코드를 짜는 사람은 이 공간이 연속적인지 단편화 되어 있는지를 몰라도 된다.<br>
+하지만, disk를 관리할 때는 이를 직접 관리해야 한다.<br>
+
+디스크에 비해 메모리에서 데이터 레이아웃은 덜 중요하다.<br>
+디스크에 상주하는 데이터 구조가 효율적이려면,<br>
+1. 디스크에 데이터를 배치하는 방법을 고려해야 하며
+2. 지속적인 저장 매체의 세부 사항을 고려하고
+3. binary 데이터 형식을 생각하고
+4. 데이터를 효율적으로 직렬화하고 역직렬화하는 방법을 찾아야 한다
+
+## Binary Encoding 
+디스크에 data를 효율적으로 저장하기 위해서는 compact하고 직/역직렬화하기 쉬운 형식으로 인코딩해야 한다.<br>
+binary format에 대해 이야기할 때 layout이라는 단어를 자주 듣는다.<br>
+malloc과 free가 없고 read와 write만 있기 때문에 접근 방식을 다르게 생각하고 데이터를 준비해야 한다.<br>
+
+효율적인 page layout을 만들기 위한 원칙은 모든 binary format에 적용된다.<br>
+레코드들을 페이지에 정리하기 전에 아래의 내용을 고려해야 한다.<br>
+- binary 형식으로 키와 데이터 레코드를 표현하는 방법
+- 여러 값을 더 복잡한 구조로 결합하는 방법
+- 가변 크기 유형과 배열을 구현하는 방법
+
+### Primitive Types
+B-Tree의 key와 value는 integer, date, string과 같은 type이고,<br>
+binary 형태로 직/역직렬화 되어 활용된다.<br>
+
+대부분의 숫자 type은 고정 길이로 저장되는데,<br>
+직/역직렬화 할 때는 같은 byte-order를 사용하는 것이 중요하다.
+byte-order는 big-endian과 little-endian이 있다.<br>
+- big-endian: MSB부터 가장 낮은 주소에 저장된다.<br>
+- little-endian: LSB가 가장 낮은 주소에 저장된다.
+
