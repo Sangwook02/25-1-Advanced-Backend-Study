@@ -81,3 +81,46 @@ byte-order는 big-endian과 little-endian이 있다.<br>
 - big-endian: MSB부터 가장 낮은 주소에 저장된다.<br>
 - little-endian: LSB가 가장 낮은 주소에 저장된다.
 
+primitives로 구성된 레코드를 저장할 때는 byte sequence를 사용한다.<br>
+즉, write 할 때는 직렬화하고 read 할 때는 역직렬화 해야 한다는 것이다.
+
+이진 데이터 형식에서는 더 복잡한 구조를 만들기 위해 원시 데이터 형식을 활용하는데,<br>
+예를 들어 숫자들은 크기에 따라 1, 2, 4, 8 byte로 저장된다.<br>
+
+소수는 float와 double로 저장되는데,<br>
+이는 fraction을 이용하므로 정확한 표현이 불가능하다.<br>
+
+### Strings and Variable-Size Data
+
+All primitive numeric types have a fixed size. Composing more complex
+values together is much like struct in C. You can combine primitive
+values into structures and use fixed-size arrays or pointers to other
+memory regions.
+Strings and other variable-size data types (such as arrays of fixed-size
+data) can be serialized as a number, representing the length of the array or
+string, followed by size bytes: the actual data. For strings, this
+representation is often called UCSD String or Pascal String, named after
+the popular implementation of the Pascal programming language. 
+
+
+모든 primitive numeric type은 고정된 크기를 가지는데,<br>
+primitive value를 구조체로 조합하거나, 고정 크기의 배열이나 다른 메모리 영역에 대한 포인터를 사용할 수 있다.<br>
+
+문자열과 다른 가변 크기 데이터 타입은 숫자로 직렬화할 수 있는데,<br>
+수도 코드는 다음과 같다.
+
+```c
+String {
+    size uint16
+    data byte[size]
+}
+```
+
+### Bit-Packed Data: Booleans, Enums, and Flags
+boolean, enum, flag와 같은 데이터는 bit 단위로도 저장할 수 있다.<br>
+
+boolean은 값이 true 아니면 false일테니 1bit로 저장할 수 있다.<br>
+
+enum은 enum의 개수에 따라 bit를 사용하면 된다.<br>
+예를 들어 4개의 enum이 있다면 2bit로 저장할 수 있다.<br>
+
