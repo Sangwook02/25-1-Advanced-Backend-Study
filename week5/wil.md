@@ -95,8 +95,6 @@ cell들이 정렬되어야 할 때는 cell 자체가 정렬된 순서로 저장�
 cell offset 포인터가 정렬된 순서로 저장된다.<br>
 
 ## Managing Variable-Size Data
-Removing an item from the page does not have to remove the actual cell and shift other cells to reoccupy the freed space.
-
 페이지에서 삭제하는 것은 셀을 실제로 제거하고 다른 셀들을 이동시켜서 비워진 공간을 다시 채우는 것이 아니라,<br>
 '삭제됨'으로 표시하고 **availability list**에 해제된 공간의 크기와 pointer를 저장하는 것이다.
 
