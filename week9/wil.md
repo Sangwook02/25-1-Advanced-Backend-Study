@@ -118,7 +118,40 @@ Checkpoint는 로그가 특정 지점까지의 로그 레코드가 완전히 저
 7번이 아니라 5번을 가리키는 이유는 6번처럼 체크포인팅의 시작과 종료 사이에 발생한 트랜잭션은<br>
 다음 체크포인팅을 할 때 체크포인팅을 해야 하기 때문이다.<br>
 
-### Operation Versus Data Log
+### Operation Log(논리적) Versus Data Log(물리적)
+#### Shadow Paging
+여러 데이터베이스에서 사용하는 기법으로, <br>
+copy-on-write 방식으로 데이터의 durability를 보장하고 트랜잭션의 atomicity를 보장한다.<br>
+
+구체적인 방법은 아래와 같다.<br>
+1. 트랜잭션이 시작되면 해당 페이지의 복사본을 만든다.<br>
+2. 트랜잭션이 페이지를 수정할 때, 원본 페이지가 아닌 복사본을 수정한다.<br>
+3. 트랜잭션이 commit되면, 원본 페이지를 가리키던 포인터가 복사본을 가리키도록 변경한다.<br>
+
+이렇게 하면 트랜잭션 실행 도중에 실패하면 복사본을 버리기만 하면 롤백이 끝나므로 durability와 atomicity 보장이 편해진다.<br>
+
+#### Before-Image and After-Image
+변경 전의 상태를 before-image, 변경 후의 상태를 after-image라고 한다.<br>
+before-image에 redo 연산을 적용하면 after-image가 생성되고,<br>
+after-image에 undo 연산을 적용하면 before-image가 생성된다.<br>
+
+#### Physical Versus Logical Log
+물리적 로그는 페이지 전체나 바이트 단위로 기록되는 반면,<br>
+논리적 로그는 트랜잭션의 연산이나 명령어 단위로 기록된다.<br>
+
+예를 들어 A의 잔고가 원래 1000원인데 600원으로 변경하는 경우,<br>
+물리적 로그는 'A의 잔고가 1000에서 600으로 변경됨'을 통째로 기록한다.<br>
+반면 논리적 로그는 'A의 잔고에서 400을 뻬기'와 같은 명령어 단위로 기록한다.<br>
+
+즉, 물리적 로그는 before-image와 after-image를 모두 기록하고,
+논리적 로그는 어떤 연산을 적용해야 하는지에 대한 정보만 기록한다.<br>
+물리적 로그는 복구 시 단순하고 빠르지만 공간을 많이 차지하고,<br>
+논리적 로그는 공간을 적게 차지하지만 복구 시 연산을 다시 실행해야 하므로 시간이 더 걸린다.<br>
+
+둘다 장단점이 있기 때문에 많은 데이터베이스는 둘을 모두 사용한다.<br>
+undo를 실행하기 위해서는 concurrency와 performance를 고려하여 논리적 로그를 쓰고,<br>
+redo를 실행하기 위해서는 복구 시간을 위해 물리적 로그를 사용한다.<br>
+
 ### Steal and Force Policies
 ### ARIES
 
