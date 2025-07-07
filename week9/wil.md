@@ -1,4 +1,4 @@
-# Chapter 5. Transaction Processing and Recovery
+_# Chapter 5. Transaction Processing and Recovery
 ## Recovery
 데이터베이스는 여러 hw와 sw 위에 구성되는데, 이들은 모두 안정성과 신뢰성을 보장하지 않는다.<br>
 따라서 데이터베이스는 fail에 대비해 recovery를 지원해야 한다.<br>
@@ -153,7 +153,70 @@ undo를 실행하기 위해서는 concurrency와 performance를 고려하여 논
 redo를 실행하기 위해서는 복구 시간을 위해 물리적 로그를 사용한다.<br>
 
 ### Steal and Force Policies
+메모리에 변경된 내용을 디스크에 플러시하는 시점을 결정하기 위해,<br>
+데이터베이스 관리 시스템은 steal/no-steal 및 force/no-force 정책을 정의한다.<br>
+이 정책들은 페이지 캐시에 적용되지만 어떤 정책을 쓰느냐에 따라 복구 알고리즘의 설계가 달라지므로<br>
+복구와 관련한 맥락에서도 중요하다.<br>
+
+Steal policy: 아직 커밋되지 않은 트랜잭션이 수정한 dirty page를 disk에 flush 하는 것을 허용하는 것<br>
+No-steal policy: 커밋되지 않은 트랜잭션이 수정한 dirty page를 disk에 flush 하지 않는 것<br>
+
+Steal 정책을 사용하면 트랜잭션이 커밋되기 전에 dirty page를 disk에 flush할 수 있으므로,<br>
+장애 발생 시 undo 해야 할 필요가 있지만 메모리에 있는 dirty page를 줄일 수 있으므로 장점이 있다.
+
+No-steal 정책을 사용하면 트랜잭션이 커밋되기 전에는 dirty page를 disk에 flush 하지 않으므로,<br>
+장애 발생 시 undo가 필요하지 않지만 메모리에 있는 dirty page가 많아질 수 있다.<br>
+그리고 장애 발생 시 디스크에는 커밋 전 상태의 old copy가 남아있고 커밋되지 않은 내용은 그냥 날라간다.<br>
+커밋되어 log로 남아있던 것들만 redo를 통해 복구할 수 있다.<br>
+---
+Force policy: 트랜잭션이 커밋되기 전에 dirty page를 disk에 flush 해야만 커밋이 완료되는 것<br>
+No-force policy: 트랜잭션이 커밋되기 전에 dirty page를 disk에 flush 하지 않아도 커밋이 완료되는 것<br>
+
+Force 정책을 사용하면 커밋된 트랜잭션의 변경 내용은 이미 disk에 기록되어 있으므로 장애가 발생해도 redo 작업이 필요하지 않다는 장점이 있지만,<br>
+변경된 모든 페이지를 disk에 flush해야 하므로 불필요한 I/O가 발생해서 커밋 속도가 느려질 수 있다.<br>
+
+No-force 정책을 사용하면 커밋된 트랜잭션의 변경 내용이 disk에 기록되지 않았을 수 있으므로 redo 로그를 사용해서 다시 적용해야 한다.<br>
+또한, 메모리에 캐싱되어 있는 페이지의 수가 많아질 수 있으므로 더 큰 페이지 캐시가 필요하다.<br>
+---
+Undo: flush된 forced 페이지에 대해 커밋된 트랜잭션의 변경을 롤백하는 것.<br>
+트랜잭션이 수정한 페이지가 커밋 전에 disk에 기록된다면 이를 롤백할 수 있도록 undo 로그를 기록해야 한다.<br> 
+
+Redo: 커밋된 트랜잭션의 변경 내용이 disk에 반영되지 않았을 수 있으므로 로그를 보고 다시 적용하는 것.<br>
+커밋 되었지만 disk에 기록되지 않은 상태에서 장애가 발생할 수 있으므로 redo 로그를 기록해야 한다.<br>
+
+일반적으로는 Steal + No-force 정책을 사용하므로 undo와 redo 로그를 모두 기록해야 한다.<br>
+커밋 전에 디스크에 기록된게 있을 수 있으므로 undo 로그를 남겨야 atomicity를,<br>
+커밋되어도 디스크에 기록되지 않았을 수 있으므로 redo 로그를 남겨야 durability를 보장할 수 있다.<br>
+
 ### ARIES
+Steal + No-force 복구 정책을 ARIES 라고 한다.<br>
+Algorithms for Recovery and Isolation Exploiting Semantics의 약자이다.<br>
+
+복구 performance(성능)을 높이기 위해 physical log를 사용하고,<br>
+concurrency(동시성)를 높이기 위해 logical log를 사용한다.<br>
+
+WAL를 사용하여 redo를 수행하고, <br>
+아직 커밋되지 않은 트랜잭션만 골라서 undo 하여 장애 전의 상태로 복구한다.<br>
+
+#### crash 발생 시 복구를 위한 3단계
+1. 분석(Analysis) 단계<br>
+분석 단계에서는 페이지 캐시에 있는 **dirty page**와 장애가 발생했을 당시 **진행 중이던 트랜잭션**을 식별한다.<br>
+dirty page는 redo(재적용) 단계의 시작점을 결정하는 데 사용되고,<br>
+진행 중이던 트랜잭션 목록은 undo(롤백) 단계에서 미완료 트랜잭션을 롤백하는데 사용된다.<br>
+정리하자면 무엇을 redo하고 무엇을 undo할지 분석하는 단계이다.<br>
+
+2. Redo(재적용) 단계<br>
+redo 단계에서는 장애가 발생하기 전까지의 WAL 내역을 순서대로 다시 실행하여 적용한다.<br>
+이 과정은 미완료 트랜잭션뿐만 아니라, 커밋되었지만 아직 디스크에 기록되지 않은 트랜잭션에도 적용된다.<br>
+
+3. Undo(롤백) 단계<br>
+undo 단계에서는 장애 시점에 완료되지 않은 모든 트랜잭션의 작업을 역순으로 되돌려서,<br>
+데이터베이스가 가장 마지막으로 consistent 했던 상태로 복원한다.<br>
+만약 복구 도중에 또 장애가 발생할 경우를 대비해, undo 작업 역시 로그에 남겨 동일한 작업이 반복되지 않도록 한다.<br>
+---
+ARIES는 로그 레코드를 식별하기 위해 LSN을 사용하고,<br>
+실행 중인 트랜잭션이 수정한 페이지를 dirty page table로 추적하며,<br>
+physical redo, logical undo, 그리고 fuzzy checkpointing을 활용한다.<br>
 
 ## Concurrency Control
 ### Serializability
