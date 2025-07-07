@@ -1,4 +1,4 @@
-_# Chapter 5. Transaction Processing and Recovery
+# Chapter 5. Transaction Processing and Recovery
 ## Recovery
 데이터베이스는 여러 hw와 sw 위에 구성되는데, 이들은 모두 안정성과 신뢰성을 보장하지 않는다.<br>
 따라서 데이터베이스는 fail에 대비해 recovery를 지원해야 한다.<br>
