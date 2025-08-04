@@ -85,4 +85,50 @@ memtable을 flush 하기 전에는 switch를 먼저 해야 한다.<br>
 flush 동안은 기존 memtable과 새로운 memtable이 모두 read 가능한 상태이다.<br>
 
 
+### Updates and Deletes
+같은 key를 가지는 data record가 여러 개 존재할 수 있다.<br>
+그렇기 때문에 삭제를 할 때는 memtable에서 지우는 것만으로는 부족하다.<br>
+
+예를 들어, key가 k1인 레코드가 disk table에 있고 값으로는 v1을 가진다고 하자.<br>
+그리고 memtable에 k1의 레코드가 v2로 업데이트되어 있다고 하자.<br>
+memtable에서 k1의 레코드를 발견했다고 이것만 지우면 disk table에 있는 v1이 남아있게 된다.<br>
+
+이런 문제를 해결하기 위해서 명시적으로 삭제되었음을 표시할 수 있는 방법이 필요하고,<br>
+LSM Tree는 tombstone이라는 개념을 사용한다.<br>
+앞서 FD-Tree에서 삭제를 구현할 때 언급했던 내용이다.<br>
+
+    11주차에 안 오셨던 분들을 위해 tombstone에 대해 다시 설명하자면,
+    삭제된 데이터임을 표시하는 데이터의 묘비인 셈이다.
+    이 tombstone은 실제로 데이터를 삭제하는 것이 아니라,
+    다른 data들처럼 insert되어 읽기 작업 중에 발견되면 해당 key는 삭제된 것으로 간주한다.
+
+
+#### 연속된 키 삭제하기
+연속된 키 n개를 모두 삭제한다고 하자.<br>
+위에서 소개한 방법대로라면 n개의 tombstone을 추가해야 한다.<br>
+이렇게 했을 때 발생하는 문제점들이 여럿 있다.<br>
+
+- 삽입해야 하는 tombstone이 많아져서 쓰기 성능이 떨어진다.
+- tombstone이 차지하는 공간이 많아져서 디스크 공간을 낭비한다.
+- 읽기 작업 시 tombstone을 모두 훑어야 하므로 읽기 성능이 떨어진다.
+- compaction 시 tombstone을 모두 훑어야 하므로 compaction 성능도 떨어진다.
+
+##### 대책: Predicate Deletes
+연속된 키 여러 개를 두 개의 tombstone으로 처리하는 방법이다.<br>
+예를 들어, Disk Table 1에 key가 1, 3, 5, 7, 9, 11, 13인 레코드가 있다고 하자.<br>
+
+이때 4보다 크거나 같고, 9보다 작은 레코드를 삭제한다고 하자.<br>
+DELETE FROM table WHERE key ≥ 3 AND key < 9
+
+그렇다면 아래와 같이 추가된다.<br>
+```
+[Disk Table 1]
+1, 3, 5, 7, 9, 11, 13
+
+[Disk Table 2]
+3(tombstone_start), 9(tombstome_end)
+```
+
+이렇게 하면 tombstone이 차지하는 공간이 줄어들고,<br>
+읽기 작업을 할 때 3, 5, 7은 조회되지 않는다.<br>
 
