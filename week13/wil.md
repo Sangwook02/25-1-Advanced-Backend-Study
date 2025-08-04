@@ -132,3 +132,77 @@ DELETE FROM table WHERE key ≥ 3 AND key < 9
 이렇게 하면 tombstone이 차지하는 공간이 줄어들고,<br>
 읽기 작업을 할 때 3, 5, 7은 조회되지 않는다.<br>
 
+### LSM Tree Lookups
+
+읽기 작업을 할 때는 여러 disk table들이 동시에 참조되고,<br>
+이들을 merge, reconcile하는 작업이 필요하다.<br>
+
+그래서 read의 동작 원리를 파악하기 위해서는 merge 과정에서 각 disk table을 어떻게 순회하는지,<br>
+중복되는 레코드는 어떻게 하나로 합쳐지는지 알아야 한다.<br>
+
+#### Merge-Iteration
+다행히도 메모리에서 disk로 올 때부터 각 table은 정렬된 상태이므로,<br>
+읽기 작업을 할 때는 다시 정렬할 필요없이 multiway merge-sort를 사용할 수 있다.<br>
+
+##### Multiway Merge-Sort
+multiway merge-sort는 여러 개의 정렬된 리스트를 하나의 정렬된 리스트로 합치는 알고리즘이다.<br>
+
+- Iterator
+  - 파일을 순회할 때 가장 마지막으로 소비한 레코드의 위치를 기억
+  - 해당 파일에 더 읽을 레코드가 있는지 확인해줌
+  - 더 읽을 레코드가 있다면 그 레코드를 반환해줌
+- Priority Queue
+  - 각 Iterator로부터 가장 작은 레코드를 공급받음
+  - 최대 iterator의 수만큼 레코드를 보유할 수 있음
+  - 그 중 가장 작은 것을 선택하여 반환하고 빈 자리에는 해당 Iterator로부터 다음 레코드를 공급받음
+  - 항상 정렬된 상태를 유지
+
+정리하자면,
+1. 각 반복자에서 첫 번째 아이템을 꺼내어 큐(우선순위 큐)에 넣음
+2. 큐에서 가장 작은 원소(헤드)를 꺼냄
+3. 그 원소를 꺼낸 반복자에서 다음 아이템을 다시 큐에 넣음
+
+### Reconciliation
+Merge-Iteration은 여러 table로 부터 읽어온 레코드들을 병합하는 과정의 일부일 뿐이고,<br>
+Reconciliation과 Conflict Resolution도 중요한 부분이다.<br>
+이 두가지는 같은 key를 가지는 레코드가 여러 개 존재할 때 어떻게 하나로 합칠 것인지에 대한 것이다.<br>
+
+서로 다른 두 table이 같은 key에 대한 레코드를 가지고 있을 수 있다.<br>
+수정이나 삭제가 발생하는 경우를 생각해보면 당연한 일이다.<br>
+
+이런 경우에는 둘 중 더 최근에 작성된 레코드를 선택해야 한다.<br>
+이를 위해 timestamp 같은 메타데이터를 사용한다.<br>
+
+최신의 정보가 아니라면 read 작업 시 무시하고,<br>
+compaction 시에는 최신의 정보로 병합되어 제거된다.
+
+### Maintenance in LSM Trees
+LSM Tree에서는 disk table의 수가 점점 증가하므로 compaction으로 그 수를 줄여줘야 한다.<br>
+
+compaction 중에도 table들은 read가 가능한 상태를 유지한다.<br>
+원래 있는 자리에 덮어쓰는 것이 아니기 때문에 merge 결과를 쓸 충분한 공간이 있어야 한다.<br>
+
+동시에 여러 compaction이 일어날 수 있지만,<br>
+각 compaction은 서로 다른 디스크 테이블을 대상하여 충돌이 발생하지 않도록 한다.<br>
+
+**Tombstone은 바로 지우지 않는다**<br>
+compaction이 일어날 때 tombstone을 즉시 삭제하지 않는다.<br>
+해당 데이터가 완전히 삭제되었다는 확신이 들 때까지 보존한다.<br>
+tombstone을 잘못 지우면 삭제되어야 하는 데이터를 부활시킬 수도 있기 때문이다.<br>
+
+RocksDB의 경우에는 tombstone이 tree의 최하위 레벨까지 이동할 때 삭제한다.<br>
+더 이상 하위 레벨에 데이터가 존재할 가능성이 없을 때까지 보존하는 것이다.<br>
+
+#### Leveled compaction
+#### Size-tiered compaction
+
+
+
+
+
+
+
+
+
+
+
