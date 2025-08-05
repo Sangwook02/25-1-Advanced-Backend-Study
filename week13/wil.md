@@ -224,11 +224,6 @@ level 1의 테이블은 병합된 테이블로 대체한다.<br>
 각 테이블끼리 서로 겹치지 않는 key ranges를 가지게 하면 테이블을 읽는 횟수를 줄일 수 있다.<br>
 해당 테이블의 메타데이터만 읽어서 찾고 있는 key가 해당 테이블에 있는지 없는지를 빠르게 확인할 수 있기 때문이다.<br>
 
-Each level has a limit on the table size and the maximum number of tables.
-As soon as the number of tables on level 1 or any level with a higher index
-reaches a threshold, tables from the current level are merged with tables
-on the next level holding the overlapping key range.
-
 각 레벨은 테이블 크기와 최대 테이블 수에 제한이 있다.<br>
 이 제한에 도달하면 현재 레벨의 테이블이 다음 레벨의 테이블과 병합된다.<br>
 
