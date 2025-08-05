@@ -194,12 +194,68 @@ RocksDB의 경우에는 tombstone이 tree의 최하위 레벨까지 이동할 �
 더 이상 하위 레벨에 데이터가 존재할 가능성이 없을 때까지 보존하는 것이다.<br>
 
 #### Leveled compaction
+컴팩션을 위한 전략 중 첫번째는 leveled compaction이다.<br>
+
+이 전략은 디스크 테이블을 여러 레벨로 나누고,<br>
+각 레벨은 특정 크기를 가진다.<br>
+이 크기를 넘어가거나 레벨이 가질 수 있는 최대 테이블 수를 넘기면 병합이 발생한다.<br>
+
+각 레벨은 index 번호를 가지며,<br>
+가장 높은 index를 가진 레벨을 bottommost level 이라고 부른다.<br>
+
+우선, 가장 상위 레벨인 level 0은 메모리로부터 flush된 memtable의 데이터로 구성된다.<br>
+이전 flush 작업에서 level 0에 들어왔지만 아직 하위 레벨로 내려가지 않은 데이터가 있을 수 있다.<br>
+그렇기 때문에 level 0의 테이블들은 서로 겹치는 key를 가질 수 있다.<br>
+
+Level 0의 테이블 수가 최대 수를 넘으면,<br>
+level 0의 테이블들을 병합하여 level 1로 이동한다.<br>
+
+Level 1 이하의 레벨에서는 각 테이블이 서로 겹치지 않는 key ranges를 가진다.<br>
+따라서 level 0의 테이블들은 compaction을 할 때 분할되어야 한다.<br>
+범위에 따라 분할하고 병합하여 해당 범위를 가진 테이블로 이동한다.<br>
+또는 level 0과 level 1의 테이블들을 모두 포함하여,<br>
+범위가 분할된 level 1 테이블로 출력할 수도 있다.<br>
+
+이웃한 두 레벨의 테이블간의 compaction을 할 때는 더 높은 레벨에 새로운 테이블을 추가한다.<br>
+예를 들어 level 1과 level 2의 테이블을 병합할 때는,<br>
+level 2에 새로운 테이블을 추가하고,<br>
+level 1의 테이블은 병합된 테이블로 대체한다.<br>
+
+각 테이블끼리 서로 겹치지 않는 key ranges를 가지게 하면 테이블을 읽는 횟수를 줄일 수 있다.<br>
+해당 테이블의 메타데이터만 읽어서 찾고 있는 key가 해당 테이블에 있는지 없는지를 빠르게 확인할 수 있기 때문이다.<br>
+
+Each level has a limit on the table size and the maximum number of tables.
+As soon as the number of tables on level 1 or any level with a higher index
+reaches a threshold, tables from the current level are merged with tables
+on the next level holding the overlapping key range.
+
+각 레벨은 테이블 크기와 최대 테이블 수에 제한이 있다.<br>
+이 제한에 도달하면 현재 레벨의 테이블이 다음 레벨의 테이블과 병합된다.<br>
+
+이런 과정을 반복하다보면 최신의 데이터일수록 더 상위 레벨에 위치하고,<br>
+오래된 데이터일수록 더 하위 레벨에 위치하게 된다.<br>
+
 #### Size-tiered compaction
+두번째 전략인 size-tiered compaction은 레벨을 사용하지 않고,<br>
+각 테이블들의 크기에 따라 압축을 수행한다.<br>
+
+level 0은 메모리에서 flush된 memtable이나 compaction을 통해 만들어진 가장 작은 테이블들로 구성된다.<br>
+테이블들은 compaction을 통해 병합되면 크기에 맞는 레벨로 이동한다.<br>
+이렇게 테이블들은 크기에 따라 promote 혹은 demote된다.<br>
 
 
+##### Table Starvation
+Size-tiered compaction이 가지는 문제점으로,<br>
+테이블들을 병합한 결과물이 작다면 상위 레벨로 이동하지 못하는 문제가 있다.<br>
+tombstone이 많이 있는 테이블들 간의 병합에서 이런 문제가 발생할 수 있다.<br>
 
 
+#### 기타 전략
+Apache Cassandra는 Time window compaction strategy를 사용한다.<br>
+TTL을 사용하여 일정 시간 동안만 데이터를 보존하고,<br>
+이후에는 compaction을 통해 오래된 데이터를 제거한다.<br>
 
+만료된 데이터만 있는 파일은 컴팩션 없이 삭제할 수 있다.<br>
 
 
 
